@@ -2,6 +2,7 @@ express = require 'express'
 crypto = require 'crypto'
 redis = require 'redis'
 client = redis.createClient()
+io = require 'socket.io'
 
 # Helper functions
 
@@ -116,3 +117,10 @@ app.post '/follow', (req, res) ->
 if not module.parent
   app.listen 8000
   console.log "Server running..."
+
+socket = io.listen app
+
+socket.on 'connection', (client) ->
+  say 'got a new client'
+  client.on 'message', () ->
+    say 'got a message'

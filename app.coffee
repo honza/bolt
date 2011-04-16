@@ -23,6 +23,7 @@ createUser = (username, password) ->
     client.set "username:#{username}:uid", res
     client.set "uid:#{res}:username", username
     client.set "uid:#{res}:password", makeHash password
+    client.lpush "users", "#{username}:#{res}"
     return
 
 app = module.exports = express.createServer()
@@ -65,6 +66,7 @@ app.post '/login', (req, res) ->
       res.render 'login',
         error: 'Wrong username/password'
     else
+      id = result
       client.get "uid:#{result}:password", (err, result) ->
         if err
           res.render 'login',
@@ -72,6 +74,7 @@ app.post '/login', (req, res) ->
         else
           if result is password
             req.session.boltauth = 'true'
+            req.session.userid = id
             res.redirect '/'
           else
             res.render 'login',
@@ -86,6 +89,27 @@ app.post '/register', (req, res) ->
   password = req.body.password
   createUser username, password
   res.redirect '/login'
+
+app.get '/users', (req, res) ->
+  client.lrange 'users', -100, 100, (err, result) ->
+    users = []
+    for user in result
+      parts = user.split ':'
+      users.push username: parts[0], id: parts[1]
+    res.render 'users',
+      users: users
+
+app.post '/follow', (req, res) ->
+  id = req.session.userid
+  tofollow = req.body.id
+
+  client.lpush "uid:#{id}:following", tofollow, (err, result) ->
+    if not err
+      res.send 'ok'
+    else
+      res.send(404)
+  client.lpush "uid:#{tofollow}:followers", id
+
 
 # Only listen on $ node app.js
 

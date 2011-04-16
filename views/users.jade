@@ -1,0 +1,7 @@
+h3 Users
+
+ul#users
+    - each u in users
+        li
+            <a href="/users/#{u.id}">#{u.username}</a> <a class="follow" href="#" rel="#{u.id}">follow</a>
+

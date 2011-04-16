@@ -122,5 +122,6 @@ socket = io.listen app
 
 socket.on 'connection', (client) ->
   say 'got a new client'
-  client.on 'message', () ->
-    say 'got a message'
+  client.on 'message', (message) ->
+    say "got a message: #{message}"
+

@@ -1,0 +1,20 @@
+h3 Login
+
+- if (error)
+    p= error
+
+form(method='post')
+    ul
+        li
+            label username:
+        li
+            input(type='text', name='username')
+        li
+            label password:
+        li
+            input(type='password', name='password')
+        li
+            input(type='submit', value='Log in')
+
+p Don't have an account?
+a(href='/register') register

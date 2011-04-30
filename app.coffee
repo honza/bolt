@@ -146,3 +146,4 @@ socket.on 'connection', (client) ->
       clients[client.id] = client
     else
       say "got a message: #{message}"
+      sendMessageToFriends message.message, message.id

@@ -1,6 +1,8 @@
 (function($) {
 
   $(function() {
+
+    var userID = 123;
     
     var socket = new io.Socket('localhost', {
       port: 8000,
@@ -8,7 +10,7 @@
     });
     socket.connect();
     socket.on('connect', function() {
-      socket.send('123');
+      socket.send(userID);
     });
     socket.on('message', function(message) {
       console.log(message);
@@ -29,7 +31,7 @@
 
     $('#send-button').click(function() {
       var t = $('#send-text').val();
-      socket.send(t);
+      socket.send({message: t, id: userID});
       $('#send-text').val("");
       return false;
     });

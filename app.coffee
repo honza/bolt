@@ -1,7 +1,7 @@
 express = require 'express'
 crypto = require 'crypto'
 redis = require 'redis'
-client = redis.createClient()
+db = redis.createClient()
 io = require 'socket.io'
 
 # Helper functions
@@ -16,15 +16,15 @@ makeHash = (word) ->
 
 # Redis functions
 
-client.on "error", (err) ->
+db.on "error", (err) ->
   say err
 
 createUser = (username, password) ->
-  client.incr 'global:nextUserId', (err, res) ->
-    client.set "username:#{username}:uid", res
-    client.set "uid:#{res}:username", username
-    client.set "uid:#{res}:password", makeHash password
-    client.lpush "users", "#{username}:#{res}"
+  db.incr 'global:nextUserId', (err, res) ->
+    db.set "username:#{username}:uid", res
+    db.set "uid:#{res}:username", username
+    db.set "uid:#{res}:password", makeHash password
+    db.lpush "users", "#{username}:#{res}"
     return
 
 app = module.exports = express.createServer()
@@ -62,13 +62,13 @@ app.post '/login', (req, res) ->
   username = req.body.username
   password = makeHash req.body.password
 
-  client.get "username:#{username}:uid", (err, result) ->
+  db.get "username:#{username}:uid", (err, result) ->
     if err
       res.render 'login',
         error: 'Wrong username/password'
     else
       id = result
-      client.get "uid:#{result}:password", (err, result) ->
+      db.get "uid:#{result}:password", (err, result) ->
         if err
           res.render 'login',
             error: 'Database error. Try again.'
@@ -81,7 +81,6 @@ app.post '/login', (req, res) ->
             res.render 'login',
               error: 'Wrong username/password'
 
-
 app.get '/register', (req, res) ->
   res.render 'register'
 
@@ -92,7 +91,7 @@ app.post '/register', (req, res) ->
   res.redirect '/login'
 
 app.get '/users', (req, res) ->
-  client.lrange 'users', -100, 100, (err, result) ->
+  db.lrange 'users', -100, 100, (err, result) ->
     users = []
     for user in result
       parts = user.split ':'
@@ -104,12 +103,12 @@ app.post '/follow', (req, res) ->
   id = req.session.userid
   tofollow = req.body.id
 
-  client.lpush "uid:#{id}:following", tofollow, (err, result) ->
+  db.lpush "uid:#{id}:following", tofollow, (err, result) ->
     if not err
       res.send 'ok'
     else
       res.send(404)
-  client.lpush "uid:#{tofollow}:followers", id
+  db.lpush "uid:#{tofollow}:followers", id
 
 
 # Only listen on $ node app.js
@@ -120,8 +119,30 @@ if not module.parent
 
 socket = io.listen app
 
+# Socket helpers
+
+isID = (message) ->
+  r = new RegExp /^[0-9]+$/
+  if r.test(message)
+    return true
+  else
+    return false
+
+sendMessageToFriends = (message, authorID) ->
+  db.llen "uid:#{authorID}:followers", (err, result) ->
+    db.lrange "uid:#{authorID}:followers", 0, result, (err, result) ->
+      for user in result
+        clients[user].send message
+
+clients = {}
+
 socket.on 'connection', (client) ->
   say 'got a new client'
-  client.on 'message', (message) ->
-    say "got a message: #{message}"
 
+  client.on 'message', (message) ->
+    if isID message
+      say "processing id"
+      client.id = parseInt message
+      clients[client.id] = client
+    else
+      say "got a message: #{message}"

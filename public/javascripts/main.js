@@ -8,7 +8,10 @@
     });
     socket.connect();
     socket.on('connect', function() {
-      socket.send('hi!');
+      socket.send('123');
+    });
+    socket.on('message', function(message) {
+      console.log(message);
     });
 
     $('a.follow').click(function() {

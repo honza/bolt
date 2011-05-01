@@ -52,7 +52,8 @@ app.get '/', (req, res) ->
   if not req.session.boltauth
     res.redirect '/login'
   else
-    res.render 'index'
+    res.render 'index',
+      home: true
 
 app.get '/login', (req, res) ->
   res.render 'login',
@@ -125,18 +126,19 @@ sendMessageToFriends = (message, client) ->
     db.lrange "uid:#{client.id}:followers", 0, result, (err, result) ->
       for user in result
         # Send through sockets first
-        if user in clients
+        say clients[user]
+        if user in Object.keys clients
           clients[user].send message
-        # And then save it in redis
-        db.rpush "uid:#{user}:timeline", message
+          # And then save it in redis
+          db.rpush "uid:#{user}:timeline", message
 
 clients = {}
 
 getCookie = (client) ->
   s = client.request.headers.cookie
   s = s.substr(12, (s.length - 12))
-  s = s.replace "%2B", "+"
-  s = s.replace "%2F", "/"
+  s = s.replace /\%2F/g, "/"
+  s = s.replace /\%2B/g, "+"
   return s
 
 getTotalClients = ->

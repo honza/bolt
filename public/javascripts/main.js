@@ -8,7 +8,9 @@
       port: 8000,
       rememberTransport: false
     });
-    socket.connect();
+    if (typeof(home) !== 'undefined') {
+      socket.connect();
+    }
     socket.on('connect', function() {
       //socket.send(userID);
     });

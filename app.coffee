@@ -156,4 +156,8 @@ socket.on 'connection', (client) ->
   client.on 'message', (message) ->
     sendMessageToFriends message, client
 
-  # TODO: Handle disconnect - e.i. take client out of clients
+  client.on 'disconnect', ->
+    say 'a client disappeared'
+    delete clients[client.id]
+    t = getTotalClients()
+    say "total: #{t}"

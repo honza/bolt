@@ -8,6 +8,12 @@ html
     script(src='/socket.io/socket.io.js')
     script(src='/javascripts/main.js')
   body
+    - if (typeof(auth) !== 'undefined')
+        div#top
+            a(href='/logout') Logout
+            a(href='/users') Users
+            a(href='/') Home
+
     div#wrap
         h1 Bolt
         != body

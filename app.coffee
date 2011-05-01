@@ -72,6 +72,7 @@ app.get '/', (req, res) ->
     db.lrange "uid:#{id}:timeline", -100, 100, (err, data) ->
       data = data.reverse()
       res.render 'index',
+        auth: true
         home: true
         messages: data
 
@@ -104,6 +105,10 @@ app.post '/login', (req, res) ->
             res.render 'login',
               error: 'Wrong username/password'
 
+app.get '/logout', (req, res) ->
+  req.session.destroy()
+  res.redirect '/'
+
 app.get '/register', (req, res) ->
   res.render 'register',
     error: false
@@ -121,6 +126,8 @@ app.post '/register', (req, res) ->
       res.redirect '/login'
 
 app.get '/users', (req, res) ->
+  if not req.session.boltauth
+    res.redirect '/login'
   db.lrange 'users', -100, 100, (err, result) ->
     users = []
     for user in result
@@ -128,6 +135,7 @@ app.get '/users', (req, res) ->
       users.push username: parts[0], id: parts[1]
     res.render 'users',
       users: users
+      auth: true
 
 app.post '/follow', (req, res) ->
   id = req.session.userid

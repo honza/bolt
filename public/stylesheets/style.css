@@ -36,3 +36,15 @@ abbr.timeago {
     display: block;
     margin-left: 10px;
 }
+
+#top {
+    height: 20px;
+    background: #ececec;
+    overflow: auto;
+}
+
+#top a {
+    display: inline-block;
+    margin: 0 5px;
+    float: right;
+}

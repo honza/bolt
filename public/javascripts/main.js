@@ -10,7 +10,7 @@
     });
     socket.connect();
     socket.on('connect', function() {
-      socket.send(userID);
+      //socket.send(userID);
     });
     socket.on('message', function(message) {
       console.log(message);
@@ -31,7 +31,7 @@
 
     $('#send-button').click(function() {
       var t = $('#send-text').val();
-      socket.send({message: t, id: userID});
+      socket.send(t);
       $('#send-text').val("");
       return false;
     });

@@ -1,6 +1,7 @@
 express = require 'express'
 crypto = require 'crypto'
 redis = require 'redis'
+RedisStore = require 'connect-redis'
 db = redis.createClient()
 io = require 'socket.io'
 
@@ -37,7 +38,7 @@ app.configure () ->
   app.use express.bodyParser()
   app.use express.methodOverride()
   app.use express.cookieParser()
-  app.use express.session secret: "+N3,6.By4(S"
+  app.use express.session secret: "+N3,6.By4(S", store: new RedisStore
   app.use app.router
   app.use express.static("#{__dirname}/public")
   return
@@ -121,29 +122,38 @@ socket = io.listen app
 
 # Socket helpers
 
-isID = (message) ->
-  r = new RegExp /^[0-9]+$/
-  if r.test(message)
-    return true
-  else
-    return false
-
-sendMessageToFriends = (message, authorID) ->
-  db.llen "uid:#{authorID}:followers", (err, result) ->
-    db.lrange "uid:#{authorID}:followers", 0, result, (err, result) ->
+sendMessageToFriends = (message, client) ->
+  db.llen "uid:#{client.id}:followers", (err, result) ->
+    db.lrange "uid:#{client.id}:followers", 0, result, (err, result) ->
       for user in result
         clients[user].send message
 
 clients = {}
 
+getCookie = (client) ->
+  s = client.request.headers.cookie
+  s = s.substr(12, (s.length - 12))
+  s = s.replace "%2B", "+"
+  s = s.replace "%2F", "/"
+  return s
+
+getTotalClients = ->
+  return Object.keys(clients).length
+
+# Kick it
+
 socket.on 'connection', (client) ->
   say 'got a new client'
+  t = getTotalClients()
+  say "total: #{t}"
+  s = getCookie client
+  db.get s, (err, r) ->
+    if not err
+      d = JSON.parse r
+      client.id = d.userid
+      clients[client.id] = client
 
   client.on 'message', (message) ->
-    if isID message
-      say "processing id"
-      client.id = parseInt message
-      clients[client.id] = client
-    else
-      say "got a message: #{message}"
-      sendMessageToFriends message.message, message.id
+    sendMessageToFriends message, client
+
+  # TODO: Handle disconnect - e.i. take client out of clients

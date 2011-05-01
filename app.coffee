@@ -105,13 +105,20 @@ app.post '/login', (req, res) ->
               error: 'Wrong username/password'
 
 app.get '/register', (req, res) ->
-  res.render 'register'
+  res.render 'register',
+    error: false
 
 app.post '/register', (req, res) ->
   username = req.body.username
   password = req.body.password
-  createUser username, password
-  res.redirect '/login'
+  # Check if user exists
+  db.get "username:#{username}:uid", (err, data) ->
+    if data
+      res.render 'register',
+        error: 'taken'
+    else
+      createUser username, password
+      res.redirect '/login'
 
 app.get '/users', (req, res) ->
   db.lrange 'users', -100, 100, (err, result) ->

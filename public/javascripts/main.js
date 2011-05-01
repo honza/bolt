@@ -16,6 +16,13 @@
     });
     socket.on('message', function(message) {
       console.log(message);
+      message = JSON.parse(message);
+      var html = "<div class='message'><strong>" + message.author + "</strong>" +
+        "<span>" + message.body + "</span>" +
+        "<abbr class='timeago' title='" + message.sent + "'></abbr>" +
+        "</div>";
+      $('#messages').prepend(html);
+      $('abbr.timeago').timeago();
     });
 
     $('a.follow').click(function() {
@@ -38,6 +45,7 @@
       return false;
     });
 
+    $('abbr.timeago').timeago();
   });
 
 })(jQuery);

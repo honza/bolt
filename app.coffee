@@ -15,6 +15,22 @@ makeHash = (word) ->
   h.update word
   return h.digest 'hex'
 
+getNow = ->
+  pad = (n) ->
+    if n < 10
+      return "0#{n}"
+    else
+      return n
+  d = new Date
+  year = d.getUTCFullYear()
+  month = pad (d.getUTCMonth() + 1)
+  day = pad d.getUTCDate()
+  hour = pad d.getUTCHours()
+  minute = pad d.getUTCMinutes()
+  second = pad d.getUTCSeconds()
+  s = "#{year}-#{month}-#{day}T#{hour}:#{minute}:#{second}Z"
+  return s
+
 # Redis functions
 
 db.on "error", (err) ->
@@ -52,8 +68,12 @@ app.get '/', (req, res) ->
   if not req.session.boltauth
     res.redirect '/login'
   else
-    res.render 'index',
-      home: true
+    id = req.session.userid
+    db.lrange "uid:#{id}:timeline", -100, 100, (err, data) ->
+      data = data.reverse()
+      res.render 'index',
+        home: true
+        messages: data
 
 app.get '/login', (req, res) ->
   res.render 'login',
@@ -78,6 +98,7 @@ app.post '/login', (req, res) ->
           if result is password
             req.session.boltauth = 'true'
             req.session.userid = id
+            req.session.username = username
             res.redirect '/'
           else
             res.render 'login',
@@ -122,15 +143,26 @@ socket = io.listen app
 # Socket helpers
 
 sendMessageToFriends = (message, client) ->
+  now = getNow()
+  message = 
+    body: message
+    author: client.username
+    id: client.id
+    sent: now
+  message = JSON.stringify message
+  say message
+  say client.id
   db.llen "uid:#{client.id}:followers", (err, result) ->
     db.lrange "uid:#{client.id}:followers", 0, result, (err, result) ->
+      say result
       for user in result
         # Send through sockets first
-        say clients[user]
         if user in Object.keys clients
           clients[user].send message
           # And then save it in redis
-          db.rpush "uid:#{user}:timeline", message
+        db.rpush "uid:#{user}:timeline", message, (err, data) ->
+          say err
+          say data
 
 clients = {}
 
@@ -155,6 +187,7 @@ socket.on 'connection', (client) ->
     if not err
       d = JSON.parse r
       client.id = d.userid
+      client.username = d.username
       clients[client.id] = client
 
   client.on 'message', (message) ->

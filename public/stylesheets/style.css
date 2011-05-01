@@ -20,3 +20,19 @@ ul, li {
     margin: 0;
     padding: 0;
 }
+
+div.message {
+    padding: 20px;
+    border: 1px solid #333;
+    margin: 10px 0;
+}
+
+.message strong {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+abbr.timeago {
+    display: block;
+    margin-left: 10px;
+}

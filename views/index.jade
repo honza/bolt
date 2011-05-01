@@ -5,5 +5,18 @@ p
 p
     input(type='button', id='send-button', value='Send')
 
+
+div#messages
+    - messages.forEach(function(message){
+        div.message
+            - message = JSON.parse(message);
+            strong= message.author
+            span= message.body
+            abbr(
+                class='timeago'
+                title=message.sent
+            )
+    - })
+
 script
     var home = true;

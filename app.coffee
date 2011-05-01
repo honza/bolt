@@ -104,12 +104,10 @@ app.post '/follow', (req, res) ->
   id = req.session.userid
   tofollow = req.body.id
 
-  db.lpush "uid:#{id}:following", tofollow, (err, result) ->
-    if not err
-      res.send 'ok'
-    else
-      res.send(404)
-  db.lpush "uid:#{tofollow}:followers", id
+  db.rpush "uid:#{id}:following", tofollow, (er, d) ->
+  db.rpush "uid:#{tofollow}:followers", id, (er, d) ->
+
+  res.send 'ok'
 
 
 # Only listen on $ node app.js
@@ -126,7 +124,11 @@ sendMessageToFriends = (message, client) ->
   db.llen "uid:#{client.id}:followers", (err, result) ->
     db.lrange "uid:#{client.id}:followers", 0, result, (err, result) ->
       for user in result
-        clients[user].send message
+        # Send through sockets first
+        if user in clients
+          clients[user].send message
+        # And then save it in redis
+        db.rpush "uid:#{user}:timeline", message
 
 clients = {}
 

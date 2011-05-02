@@ -128,14 +128,26 @@ app.post '/register', (req, res) ->
 app.get '/users', (req, res) ->
   if not req.session.boltauth
     res.redirect '/login'
-  db.lrange 'users', -100, 100, (err, result) ->
-    users = []
-    for user in result
-      parts = user.split ':'
-      users.push username: parts[0], id: parts[1]
-    res.render 'users',
-      users: users
-      auth: true
+  id = req.session.userid
+  db.llen 'users', (err, result) ->
+    db.lrange 'users', 0, result, (err, result) ->
+      users = []
+      for user in result
+        parts = user.split ':'
+        users.push
+          username: parts[0]
+          id: parts[1]
+      # Now that we have the users array, let's add to each object a key to
+      # indicate whether we already follow this user
+      db.llen "uid:#{id}:following", (err, result) ->
+        db.lrange "uid:#{id}:following", 0, result, (err, result) ->
+          # Loop over and assign
+          for u in users
+            if u.id in result
+              u.follow = true
+          res.render 'users',
+            users: users
+            auth: true
 
 app.post '/follow', (req, res) ->
   id = req.session.userid

@@ -177,24 +177,28 @@ sendMessageToFriends = (message, client) ->
     id: client.id
     sent: now
   message = JSON.stringify message
-  say message
-  say client.id
   db.llen "uid:#{client.id}:followers", (err, result) ->
     db.lrange "uid:#{client.id}:followers", 0, result, (err, result) ->
-      say result
       for user in result
         # Send through sockets first
         if user in Object.keys clients
+          say "sending a message to #{user}"
+          say message
+          say escape message
           clients[user].send message
+          say 'sent a message'
           # And then save it in redis
-        db.rpush "uid:#{user}:timeline", message, (err, data) ->
-          say err
-          say data
+        db.rpush "uid:#{user}:timeline", message
 
 clients = {}
 
 getCookie = (client) ->
+  r = new RegExp /^connect/
   s = client.request.headers.cookie
+  s = s.split ' '
+  for x in s
+    if r.test x
+      s = x
   s = s.substr(12, (s.length - 12))
   s = s.replace /\%2F/g, "/"
   s = s.replace /\%2B/g, "+"

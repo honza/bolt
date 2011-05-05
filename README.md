@@ -8,6 +8,7 @@ To install all the dependencies on an Ubuntu server, you can use the
 ### Dependencies:
 
 * Node.js
+* Redis
 * npm
 * npm install coffee-script
 * npm install express

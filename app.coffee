@@ -15,6 +15,7 @@ makeHash = (word) ->
   h.update word
   return h.digest 'hex'
 
+# Return utc now in format suitable for jquery.timeago
 getNow = ->
   pad = (n) ->
     if n < 10
@@ -46,7 +47,7 @@ createUser = (username, password) ->
 
 app = module.exports = express.createServer()
 
-# Configuration
+# Express configuration
 
 app.configure () ->
   app.set 'views', "#{__dirname}/views"
@@ -56,6 +57,9 @@ app.configure () ->
   app.use express.cookieParser()
   app.use express.session secret: "+N3,6.By4(S", store: new RedisStore
   app.use app.router
+  app.use express.compiler
+    src: "#{__dirname}/public"
+    enable: ['less']
   app.use express.static("#{__dirname}/public")
   return
 
@@ -69,12 +73,14 @@ app.get '/', (req, res) ->
     res.redirect '/login'
   else
     id = req.session.userid
-    db.lrange "uid:#{id}:timeline", -100, 100, (err, data) ->
-      data = data.reverse()
-      res.render 'index',
-        auth: true
-        home: true
-        messages: data
+    # Select logged in user's messages
+    db.llen "uid:#{id}:timeline", (err, data) ->
+      db.lrange "uid:#{id}:timeline", 0, data, (err, data) ->
+        data = data.reverse()
+        res.render 'index',
+          auth: true
+          home: true
+          messages: data
 
 app.get '/login', (req, res) ->
   res.render 'login',
@@ -158,7 +164,6 @@ app.post '/follow', (req, res) ->
 
   res.send 'ok'
 
-
 # Only listen on $ node app.js
 
 if not module.parent
@@ -183,8 +188,8 @@ sendMessageToFriends = (message, client) ->
         # Send through sockets first
         if user in Object.keys clients
           say "sending a message to #{user}"
-          say message
-          say escape message
+          message = message.replace /</g, '&lt;'
+          message = message.replace />/g, '&gt;'
           clients[user].send message
           say 'sent a message'
           # And then save it in redis

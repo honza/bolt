@@ -1,50 +1,69 @@
 body {
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  background: #fff4bc;
   margin: 0;
   padding: 0;
 }
-
 a {
-  color: #00B7FF;
+  color: #cc6622;
+  text-decoration: none;
 }
-
 #wrap {
-    width: 600px;
-    margin: 0 auto;
-    background: #ececec;
-    padding: 30px;
+  width: 600px;
+  margin: 0 auto;
+  background: #e5c994;
+  padding: 30px;
 }
-
 ul, li {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
-
 div.message {
-    padding: 20px;
-    border: 1px solid #333;
-    margin: 10px 0;
+  padding: 20px 0;
+  border-bottom: 1px dashed #2e2e33;
+  margin: 10px 0;
+  font-size: 12px;
 }
-
 .message strong {
-    display: inline-block;
-    margin-right: 10px;
+  display: inline-block;
+  margin-right: 10px;
+  color: #2e2e33;
 }
-
 abbr.timeago {
-    display: block;
-    margin-left: 10px;
+  display: block;
+  margin-left: 5px;
+  font-size: 10px;
 }
-
 #top {
-    height: 20px;
-    background: #ececec;
-    overflow: auto;
+  padding: 10px;
+  background: #2e2e33;
+  overflow: auto;
 }
-
-#top a {
-    display: inline-block;
-    margin: 0 5px;
-    float: right;
+#actions {
+  width: 200px;
+  float: right;
+}
+#actions a {
+  display: inline-block;
+  float: right;
+  margin: 0 5px;
+}
+textarea {
+  font-size: 14px;
+  padding: 5px;
+}
+#footer {
+  text-align: center;
+  font-size: 10px;
+  margin-top: 30px;
+}
+#users li {
+  width: 200px;
+  padding: 10px 5px;
+  border-bottom: 1px dashed #fff4bc;
+}
+#users li span {
+  width: 50px;
+  float: right;
 }

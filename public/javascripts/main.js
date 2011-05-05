@@ -17,12 +17,15 @@
     socket.on('message', function(message) {
       console.log(message);
       message = JSON.parse(message);
-      var html = "<div class='message'><strong>" + message.author + "</strong>" +
+      var html = "<div class='message new'><strong>" + message.author + "</strong>" +
         "<span>" + message.body + "</span>" +
         "<abbr class='timeago' title='" + message.sent + "'></abbr>" +
         "</div>";
       $('#messages').prepend(html);
       $('abbr.timeago').timeago();
+      setTimeout(function() {
+        $('.new').removeClass('new'); 
+      }, 2000);
     });
 
     $('a.follow').click(function() {

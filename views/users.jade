@@ -4,8 +4,8 @@ ul#users
     - each u in users
         li
             - if (u.follow)
-                <a href="/users/#{u.id}">#{u.username}</a> following
+                #{u.username} <span>following</span>
             - else
                 <a href="/users/#{u.id}">#{u.username}</a>
-                <a class="follow" href="#" rel="#{u.id}">follow</a>
+                <span><a class="follow" href="#" rel="#{u.id}">follow</a></span>
 

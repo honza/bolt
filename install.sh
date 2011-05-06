@@ -24,5 +24,6 @@ sudo make install
 npm install coffee-script
 npm install express
 npm install jade
+npm install less
 npm install hiredis redis
 npm install socket.io

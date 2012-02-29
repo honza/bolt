@@ -1,7 +1,7 @@
 express = require 'express'
 crypto = require 'crypto'
 redis = require 'redis'
-RedisStore = require 'connect-redis'
+RedisStore = require('connect-redis')(express)
 db = redis.createClient()
 io = require 'socket.io'
 

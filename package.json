@@ -1,0 +1,14 @@
+{
+  "name": "bolt",
+  "description": "A twitter clone",
+  "version": "0.0.1",
+  "author": "Honza Pokorny",
+  "dependencies": {
+    "express": "2.5.8",
+    "redis": "0.7.1",
+    "connect-redis": "1.2.0",
+    "socket.io": "0.9.0",
+    "jade": "0.20.3"
+  },
+  "engines": { "node": ">= 0.4.1 < 0.7.0" }
+}

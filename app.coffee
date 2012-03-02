@@ -2,18 +2,22 @@ express = require 'express'
 crypto = require 'crypto'
 redis = require 'redis'
 RedisStore = require('connect-redis')(express)
-db = redis.createClient()
+
+if process.env.REDISTOGO_URL
+  db = require('redis-url').connect(process.env.REDISTOGO_URL);
+else
+  db = redis.createClient()
+
 io = require 'socket.io'
 
 # Helper functions
 
-say = (word) ->
-  console.log word
+say = (word) -> console.log word
 
 makeHash = (word) ->
   h = crypto.createHash 'sha1'
   h.update word
-  return h.digest 'hex'
+  h.digest 'hex'
 
 # Return utc now in format suitable for jquery.timeago
 getNow = ->
@@ -29,13 +33,11 @@ getNow = ->
   hour = pad d.getUTCHours()
   minute = pad d.getUTCMinutes()
   second = pad d.getUTCSeconds()
-  s = "#{year}-#{month}-#{day}T#{hour}:#{minute}:#{second}Z"
-  return s
+  "#{year}-#{month}-#{day}T#{hour}:#{minute}:#{second}Z"
 
 # Redis functions
 
-db.on "error", (err) ->
-  say err
+db.on "error", (err) -> say err
 
 createUser = (username, password) ->
   db.incr 'global:nextUserId', (err, res) ->
@@ -43,28 +45,34 @@ createUser = (username, password) ->
     db.set "uid:#{res}:username", username
     db.set "uid:#{res}:password", makeHash password
     db.lpush "users", "#{username}:#{res}"
-    return
 
 app = module.exports = express.createServer()
 
 # Express configuration
 
-app.configure () ->
+app.configure ->
   app.set 'views', "#{__dirname}/views"
   app.set 'view engine', 'jade'
   app.use express.bodyParser()
   app.use express.methodOverride()
   app.use express.cookieParser()
-  app.use express.session secret: "+N3,6.By4(S", store: new RedisStore
+  app.use express.session
+    secret: "+N3,6.By4(S"
+    store: new RedisStore
+    cookie:
+      path: '/'
+      httpOnly: false
+      maxAge: 14400000
   app.use app.router
   app.use express.compiler
     src: "#{__dirname}/public"
     enable: ['less']
   app.use express.static("#{__dirname}/public")
-  return
 
-app.configure 'development', () ->
-  app.use express.errorHandler(dumpExceptions: true, showStack: true)
+app.configure 'development', ->
+  app.use express.errorHandler
+    dumpExceptions: true
+    showStack: true
 
 # Routes
 
@@ -167,67 +175,71 @@ app.post '/follow', (req, res) ->
 # Only listen on $ node app.js
 
 if not module.parent
-  app.listen 8000
+  io = io.listen app
+  app.listen process.env.PORT or 8000
   console.log "Server running..."
 
-socket = io.listen app
 
 # Socket helpers
 
-sendMessageToFriends = (message, client) ->
-  now = getNow()
-  message = 
-    body: message
-    author: client.username
-    id: client.id
-    sent: now
-  message = JSON.stringify message
-  db.llen "uid:#{client.id}:followers", (err, result) ->
-    db.lrange "uid:#{client.id}:followers", 0, result, (err, result) ->
-      for user in result
-        # Send through sockets first
-        if user in Object.keys clients
-          say "sending a message to #{user}"
-          message = message.replace /</g, '&lt;'
-          message = message.replace />/g, '&gt;'
-          clients[user].send message
-          say 'sent a message'
-          # And then save it in redis
-        db.rpush "uid:#{user}:timeline", message
+sendMessageToFriends = (message, socket) ->
+  console.log 'sending message to friends'
+  sid = message.cookie
+  message = message.message
+  getUserByCookie sid, (client) ->
+
+    now = getNow()
+    message = 
+      body: message
+      author: client.username
+      id: client.userid
+      sent: now
+    # message = JSON.stringify message
+
+    db.llen "uid:#{client.userid}:followers", (err, result) ->
+      db.lrange "uid:#{client.userid}:followers", 0, result, (err, result) ->
+        for user in result
+          # Send through sockets first
+          if user in Object.keys clients
+            say "sending a message to #{user}"
+            message.body = message.body.replace /</g, '&lt;'
+            message.body = message.body.replace />/g, '&gt;'
+
+            clients[user].socket.emit 'message', message
+
+            # And then save it in redis
+          db.rpush "uid:#{user}:timeline", JSON.stringify message
 
 clients = {}
 
-getCookie = (client) ->
-  r = new RegExp /^connect/
-  s = client.request.headers.cookie
-  s = s.split ' '
-  for x in s
-    if r.test x
-      s = x
-  s = s.substr(12, (s.length - 12))
-  s = s.replace /\%2F/g, "/"
-  s = s.replace /\%2B/g, "+"
-  return s
+getTotalClients = -> Object.keys(clients).length
 
-getTotalClients = ->
-  return Object.keys(clients).length
+getUserByCookie = (cookie, callback) ->
+  db.get "sess:#{cookie}", (err, r) ->
+    callback JSON.parse r
+
+registerClient = (sid, socket) ->
+  getUserByCookie sid.cookie, (data) ->
+    client =
+      id: data.userid
+      username: data.username
+      socket: socket
+
+    clients[client.id] = client
+    # client.id = d.userid
+    # client.username = d.username
+    # clients[client.id] = client
 
 # Kick it
 
-socket.on 'connection', (client) ->
+io.sockets.on 'connection', (client) ->
   say 'got a new client'
-  t = getTotalClients()
-  say "total: #{t}"
-  s = getCookie client
-  db.get s, (err, r) ->
-    if not err
-      d = JSON.parse r
-      client.id = d.userid
-      client.username = d.username
-      clients[client.id] = client
+
+  client.on 'auth', (data) ->
+    registerClient data, client
 
   client.on 'message', (message) ->
-    sendMessageToFriends message, client
+      sendMessageToFriends message
 
   client.on 'disconnect', ->
     say 'a client disappeared'

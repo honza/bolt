@@ -8,7 +8,8 @@
     "redis": "0.7.1",
     "connect-redis": "1.2.0",
     "socket.io": "0.9.0",
-    "jade": "0.20.3"
+    "jade": "0.20.3",
+     "redis-url": "0.0.1"
   },
   "engines": { "node": ">= 0.4.1 < 0.7.0" }
 }

@@ -1,32 +1,65 @@
 (function($) {
 
-  $(function() {
+  var Client;
 
-    var userID = 123;
-    
-    var socket = new io.Socket('localhost', {
-      port: 8000,
-      rememberTransport: false
-    });
-    if (typeof(home) !== 'undefined') {
-      socket.connect();
+  Client = (function() {
+
+    function Client() {
+      this.socket = io.connect('http://localhost');
+      this.cookie = this.getCookie();
+      this.onConnect();
+      this.bind();
     }
-    socket.on('connect', function() {
-      //socket.send(userID);
-    });
-    socket.on('message', function(message) {
+
+    Client.prototype.bind = function() {
+      this.socket.on('message', $.proxy(this.onMessage, this));
+    };
+
+    Client.prototype.onMessage = function(message) {
       console.log(message);
-      message = JSON.parse(message);
-      var html = "<div class='message new'><strong>" + message.author + "</strong>" +
-        "<span>" + message.body + "</span>" +
-        "<abbr class='timeago' title='" + message.sent + "'></abbr>" +
-        "</div>";
+      var html = '<div class="message new"><strong>' + message.author +
+        '</strong>' + '<span>' + message.body + '</span>' +
+        '<abbr class="timeago" title="' + message.sent + '"></abbr>' +
+        '</div>';
+
       $('#messages').prepend(html);
       $('abbr.timeago').timeago();
       setTimeout(function() {
-        $('.new').removeClass('new'); 
+        $('.new').removeClass('new');
       }, 2000);
-    });
+
+    };
+
+    Client.prototype.onConnect = function() {
+      this.socket.emit('auth', {
+        cookie: this.cookie
+      });
+    };
+
+    Client.prototype.send = function(message) {
+      this.socket.emit('message', {
+        message: message,
+        cookie: this.cookie
+      });
+    };
+
+    Client.prototype.getCookie = function() {
+      return $.cookie('connect.sid');
+    };
+
+    return Client;
+
+  })();
+
+  $(function() {
+
+    var client;
+
+    // socket.io
+
+    client = new Client;
+
+    // UI stuff
 
     $('a.follow').click(function() {
       var id = $(this).attr('rel');
@@ -43,8 +76,8 @@
 
     $('#send-button').click(function() {
       var t = $('#send-text').val();
-      socket.send(t);
-      $('#send-text').val("");
+      client.send(t);
+      $('#send-text').val('');
       return false;
     });
 

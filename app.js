@@ -1,28 +1,32 @@
 (function() {
-  var RedisStore, app, clients, createUser, crypto, db, express, getCookie, getNow, getTotalClients, io, makeHash, redis, say, sendMessageToFriends, socket;
-  var __indexOf = Array.prototype.indexOf || function(item) {
-    for (var i = 0, l = this.length; i < l; i++) {
-      if (this[i] === item) return i;
-    }
-    return -1;
-  };
+  var RedisStore, app, clients, createUser, crypto, db, express, getNow, getTotalClients, getUserByCookie, io, makeHash, redis, registerClient, say, sendMessageToFriends,
+    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+
   express = require('express');
+
   crypto = require('crypto');
+
   redis = require('redis');
-  RedisStore = require('connect-redis');
+
+  RedisStore = require('connect-redis')(express);
+
   db = redis.createClient();
+
   io = require('socket.io');
+
   say = function(word) {
     return console.log(word);
   };
+
   makeHash = function(word) {
     var h;
     h = crypto.createHash('sha1');
     h.update(word);
     return h.digest('hex');
   };
+
   getNow = function() {
-    var d, day, hour, minute, month, pad, s, second, year;
+    var d, day, hour, minute, month, pad, second, year;
     pad = function(n) {
       if (n < 10) {
         return "0" + n;
@@ -37,21 +41,24 @@
     hour = pad(d.getUTCHours());
     minute = pad(d.getUTCMinutes());
     second = pad(d.getUTCSeconds());
-    s = "" + year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + "Z";
-    return s;
+    return "" + year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + "Z";
   };
+
   db.on("error", function(err) {
     return say(err);
   });
+
   createUser = function(username, password) {
     return db.incr('global:nextUserId', function(err, res) {
       db.set("username:" + username + ":uid", res);
       db.set("uid:" + res + ":username", username);
       db.set("uid:" + res + ":password", makeHash(password));
-      db.lpush("users", "" + username + ":" + res);
+      return db.lpush("users", "" + username + ":" + res);
     });
   };
+
   app = module.exports = express.createServer();
+
   app.configure(function() {
     app.set('views', "" + __dirname + "/views");
     app.set('view engine', 'jade');
@@ -60,21 +67,28 @@
     app.use(express.cookieParser());
     app.use(express.session({
       secret: "+N3,6.By4(S",
-      store: new RedisStore
+      store: new RedisStore,
+      cookie: {
+        path: '/',
+        httpOnly: false,
+        maxAge: 14400000
+      }
     }));
     app.use(app.router);
     app.use(express.compiler({
       src: "" + __dirname + "/public",
       enable: ['less']
     }));
-    app.use(express.static("" + __dirname + "/public"));
+    return app.use(express.static("" + __dirname + "/public"));
   });
+
   app.configure('development', function() {
     return app.use(express.errorHandler({
       dumpExceptions: true,
       showStack: true
     }));
   });
+
   app.get('/', function(req, res) {
     var id;
     if (!req.session.boltauth) {
@@ -93,11 +107,13 @@
       });
     }
   });
+
   app.get('/login', function(req, res) {
     return res.render('login', {
       error: null
     });
   });
+
   app.post('/login', function(req, res) {
     var password, username;
     username = req.body.username;
@@ -131,15 +147,18 @@
       }
     });
   });
+
   app.get('/logout', function(req, res) {
     req.session.destroy();
     return res.redirect('/');
   });
+
   app.get('/register', function(req, res) {
     return res.render('register', {
       error: false
     });
   });
+
   app.post('/register', function(req, res) {
     var password, username;
     username = req.body.username;
@@ -155,11 +174,10 @@
       }
     });
   });
+
   app.get('/users', function(req, res) {
     var id;
-    if (!req.session.boltauth) {
-      res.redirect('/login');
-    }
+    if (!req.session.boltauth) res.redirect('/login');
     id = req.session.userid;
     return db.llen('users', function(err, result) {
       return db.lrange('users', 0, result, function(err, result) {
@@ -178,9 +196,7 @@
             var u, _j, _len2, _ref;
             for (_j = 0, _len2 = users.length; _j < _len2; _j++) {
               u = users[_j];
-              if (_ref = u.id, __indexOf.call(result, _ref) >= 0) {
-                u.follow = true;
-              }
+              if (_ref = u.id, __indexOf.call(result, _ref) >= 0) u.follow = true;
             }
             return res.render('users', {
               users: users,
@@ -191,6 +207,7 @@
       });
     });
   });
+
   app.post('/follow', function(req, res) {
     var id, tofollow;
     id = req.session.userid;
@@ -199,83 +216,86 @@
     db.rpush("uid:" + tofollow + ":followers", id, function(er, d) {});
     return res.send('ok');
   });
+
   if (!module.parent) {
-    app.listen(8000);
+    io = io.listen(app);
+    app.listen(process.env.PORT || 8000);
     console.log("Server running...");
   }
-  socket = io.listen(app);
-  sendMessageToFriends = function(message, client) {
-    var now;
-    now = getNow();
-    message = {
-      body: message,
-      author: client.username,
-      id: client.id,
-      sent: now
-    };
-    message = JSON.stringify(message);
-    return db.llen("uid:" + client.id + ":followers", function(err, result) {
-      return db.lrange("uid:" + client.id + ":followers", 0, result, function(err, result) {
-        var user, _i, _len, _results;
-        _results = [];
-        for (_i = 0, _len = result.length; _i < _len; _i++) {
-          user = result[_i];
-          if (__indexOf.call(Object.keys(clients), user) >= 0) {
-            say("sending a message to " + user);
-            message = message.replace(/</g, '&lt;');
-            message = message.replace(/>/g, '&gt;');
-            clients[user].send(message);
-            say('sent a message');
+
+  sendMessageToFriends = function(message, socket) {
+    var sid;
+    console.log('sending message to friends');
+    sid = message.cookie;
+    message = message.message;
+    return getUserByCookie(sid, function(client) {
+      var now;
+      now = getNow();
+      message = {
+        body: message,
+        author: client.username,
+        id: client.userid,
+        sent: now
+      };
+      return db.llen("uid:" + client.userid + ":followers", function(err, result) {
+        return db.lrange("uid:" + client.userid + ":followers", 0, result, function(err, result) {
+          var user, _i, _len, _results;
+          _results = [];
+          for (_i = 0, _len = result.length; _i < _len; _i++) {
+            user = result[_i];
+            if (__indexOf.call(Object.keys(clients), user) >= 0) {
+              say("sending a message to " + user);
+              message.body = message.body.replace(/</g, '&lt;');
+              message.body = message.body.replace(/>/g, '&gt;');
+              clients[user].socket.emit('message', message);
+            }
+            _results.push(db.rpush("uid:" + user + ":timeline", JSON.stringify(message)));
           }
-          _results.push(db.rpush("uid:" + user + ":timeline", message));
-        }
-        return _results;
+          return _results;
+        });
       });
     });
   };
+
   clients = {};
-  getCookie = function(client) {
-    var r, s, x, _i, _len;
-    r = new RegExp(/^connect/);
-    s = client.request.headers.cookie;
-    s = s.split(' ');
-    for (_i = 0, _len = s.length; _i < _len; _i++) {
-      x = s[_i];
-      if (r.test(x)) {
-        s = x;
-      }
-    }
-    s = s.substr(12, s.length - 12);
-    s = s.replace(/\%2F/g, "/");
-    s = s.replace(/\%2B/g, "+");
-    return s;
-  };
+
   getTotalClients = function() {
     return Object.keys(clients).length;
   };
-  socket.on('connection', function(client) {
-    var s, t;
+
+  getUserByCookie = function(cookie, callback) {
+    return db.get("sess:" + cookie, function(err, r) {
+      return callback(JSON.parse(r));
+    });
+  };
+
+  registerClient = function(sid, socket) {
+    return getUserByCookie(sid.cookie, function(data) {
+      var client;
+      client = {
+        id: data.userid,
+        username: data.username,
+        socket: socket
+      };
+      return clients[client.id] = client;
+    });
+  };
+
+  io.sockets.on('connection', function(client) {
     say('got a new client');
-    t = getTotalClients();
-    say("total: " + t);
-    s = getCookie(client);
-    db.get(s, function(err, r) {
-      var d;
-      if (!err) {
-        d = JSON.parse(r);
-        client.id = d.userid;
-        client.username = d.username;
-        return clients[client.id] = client;
-      }
+    client.on('auth', function(data) {
+      return registerClient(data, client);
     });
     client.on('message', function(message) {
-      return sendMessageToFriends(message, client);
+      return sendMessageToFriends(message);
     });
     return client.on('disconnect', function() {
+      var t;
       say('a client disappeared');
       delete clients[client.id];
       t = getTotalClients();
       return say("total: " + t);
     });
   });
+
 }).call(this);

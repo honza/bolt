@@ -4,8 +4,10 @@ redis = require 'redis'
 RedisStore = require('connect-redis')(express)
 
 if process.env.REDISTOGO_URL
+  console.log 'redis to go'
   db = require('redis-url').connect(process.env.REDISTOGO_URL);
 else
+  console.log 'not to go'
   db = redis.createClient()
 
 redisStore = new RedisStore

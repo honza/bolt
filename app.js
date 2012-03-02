@@ -1,5 +1,5 @@
 (function() {
-  var RedisStore, app, clients, createUser, crypto, db, express, getNow, getTotalClients, getUserByCookie, io, makeHash, redis, registerClient, say, sendMessageToFriends,
+  var RedisStore, app, clients, createUser, crypto, db, express, getNow, getTotalClients, getUserByCookie, io, makeHash, redis, redisStore, registerClient, say, sendMessageToFriends,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   express = require('express');
@@ -10,7 +10,17 @@
 
   RedisStore = require('connect-redis')(express);
 
-  db = redis.createClient();
+  if (process.env.REDISTOGO_URL) {
+    console.log('redis to go');
+    db = require('redis-url').connect(process.env.REDISTOGO_URL);
+  } else {
+    console.log('not to go');
+    db = redis.createClient();
+  }
+
+  redisStore = new RedisStore({
+    client: db
+  });
 
   io = require('socket.io');
 
@@ -67,7 +77,7 @@
     app.use(express.cookieParser());
     app.use(express.session({
       secret: "+N3,6.By4(S",
-      store: new RedisStore,
+      store: redisStore,
       cookie: {
         path: '/',
         httpOnly: false,

@@ -3,6 +3,7 @@ crypto = require 'crypto'
 redis = require 'redis'
 RedisStore = require('connect-redis')(express)
 
+# This is so that Bolt works on Heroku --- if Heroku supported websockets.
 if process.env.REDISTOGO_URL
   console.log 'redis to go'
   db = require('redis-url').createClient process.env.REDISTOGO_URL

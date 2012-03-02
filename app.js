@@ -12,7 +12,7 @@
 
   if (process.env.REDISTOGO_URL) {
     console.log('redis to go');
-    db = require('redis-url').connect(process.env.REDISTOGO_URL);
+    db = require('redis-url').createClient(process.env.REDISTOGO_URL);
   } else {
     console.log('not to go');
     db = redis.createClient();

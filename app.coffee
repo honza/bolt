@@ -8,6 +8,9 @@ if process.env.REDISTOGO_URL
 else
   db = redis.createClient()
 
+redisStore = new RedisStore
+  client: db
+
 io = require 'socket.io'
 
 # Helper functions
@@ -58,7 +61,7 @@ app.configure ->
   app.use express.cookieParser()
   app.use express.session
     secret: "+N3,6.By4(S"
-    store: new RedisStore
+    store: redisStore
     cookie:
       path: '/'
       httpOnly: false
